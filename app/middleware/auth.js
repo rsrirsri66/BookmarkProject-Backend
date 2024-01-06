@@ -22,19 +22,26 @@ const authenticate = async (req, res, next) => {
     let decodedToken;
     try{
         decodedToken = await admin.auth().verifyIdToken(token[1]);
+        console.log(decodedToken);
+
     }
-    // console.log(decodedToken);
     catch(e){
         res.status(401).send({message: "Unauthorized user, please send valid bearer token"});
         return;
     }
 
     let user = await db.query("select * from users where auth_id = '"+decodedToken.uid+"'");
+    if(user && user.rowCount === 0){
+        const result = await db.query('INSERT INTO users (phone, auth_id) VALUES ($1, $2) RETURNING *', [decodedToken.phone_number, decodedToken.uid]);
+        user = await db.query("select * from users where auth_id = '"+decodedToken.uid+"'");
+    }
+
     if (user && user.rowCount !== 0){
         req.user = user.rows[0];
         console.log(req.user);
     }
     else{
+
         res.status(401).send({message: "Unauthorized user, please send valid bearer token"});
         return;
     }
