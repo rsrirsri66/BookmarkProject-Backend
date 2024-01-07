@@ -8,8 +8,9 @@ module.exports = app =>{
     app.get("/users", userController.checkMobile);
     app.get("/book", auth ,bookmarksController.checkbooks);
     app.post("/createbooks", auth ,bookmarksController.createBookmark);
-    app.put("/update/:id/:user_id",bookmarksController.updateBookmark);
+    app.put("/update/:id/",bookmarksController.updateBookmark);
     app.get("/tags", auth ,tagsController.getTags);
     app.post("/addtags",auth ,tagsController.addTags);
     app.post("/addusers",userController.addUser);
+    app.put("/delbook/:id/",bookmarksController.softDeleteBookmark)
 };

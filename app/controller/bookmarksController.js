@@ -28,7 +28,7 @@ exports.createBookmark = async (req, res) => {
   const {user} = req
   try {
        // Check if the URL already exists in the database
-       const existingBookmark = await db.query('SELECT * FROM bookmarks WHERE url = $1', [url]);
+       const existingBookmark = await db.query('SELECT * FROM bookmarks WHERE url = $1 and user_id= $2', [url, user.id]);
        if (existingBookmark.rows.length > 0) {
          return res.status(400).json({ error: 'Bookmark with this URL already exists' });
        }
@@ -75,12 +75,12 @@ exports.createBookmark = async (req, res) => {
 
 
 exports.updateBookmark = async (req, res) => {
-  const { id, user_id } = req.params;
+  const { id } = req.params;
  // Assuming your route includes a parameter for the bookmark ID
   const { url, title, description } = req.body;
  
   try {
-      const checkBookmark = await db.query('SELECT * FROM bookmarks WHERE id = $1 AND user_id = $2', [id, user_id]);
+      const checkBookmark = await db.query('SELECT * FROM bookmarks WHERE id = $1 ', [id]);
 
       if (checkBookmark.rows.length === 0) {
           return res.status(404).json({ error: 'Bookmark not found' });
@@ -88,14 +88,44 @@ exports.updateBookmark = async (req, res) => {
 
       // Update the bookmark
       const result = await db.query(
-          'UPDATE bookmarks SET url = $1, title = $2, description = $3 WHERE id = $4 AND user_id = $5 RETURNING *',
-          [url, title, description, id, user_id]
+          'UPDATE bookmarks SET url = $1, title = $2, description = $3 WHERE id = $4  RETURNING *',
+          [url, title, description, id]
       );
       const updatedBookmark = result.rows[0];
       return res.json({ message: 'Bookmark updated successfully', bookmark: updatedBookmark });
   } catch (error) {
+    console.log('Error in updateBookmarkApi:', error.response);
       console.error(error);
       return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
+  exports.softDeleteBookmark = async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      // Check if the bookmark exists
+      const checkBookmark = await db.query('SELECT * FROM bookmarks WHERE id = $1', [id]);
+  
+      if (checkBookmark.rows.length === 0) {
+        return res.status(404).json({ error: 'Bookmark not found' });
+      }
+  
+      // Soft delete the bookmark by updating is_active to false
+      const result = await db.query(
+        'UPDATE bookmarks SET is_active = false WHERE id = $1 RETURNING *',
+        [id]
+      );
+  
+      if (result.rowCount > 0) {
+        // Bookmark soft deleted successfully
+        res.status(204).send();
+      } else {
+        // Bookmark not found or not deleted
+        res.status(404).json({ error: 'Bookmark not found or could not be deleted.' });
+      }
+    } catch (error) {
+      console.error('Error in softDeleteBookmark:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };
